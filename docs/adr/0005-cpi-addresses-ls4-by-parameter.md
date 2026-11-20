@@ -16,4 +16,4 @@ The iFlow externalises `LW_S4_Address` and the credential alias `LW_S4`. The BTP
 ## Consequences
 
 - Two places hold the same target; keep them in sync (documented in `docs/setup.md`).
-- JMS availability on the trial tenant: **to be recorded here after Phase 1 step 6** (JMS retry pattern vs Data Store retry fallback).
+- JMS availability on the trial tenant: yes
