@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-20
 - Project: P2 Inbound e-invoicing
-- Bible section changed: 
+- Bible section changed: §15 (learning environment, S/4HANA stand-in)
 
 ## Context
 

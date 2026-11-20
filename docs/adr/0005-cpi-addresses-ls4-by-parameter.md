@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-20
 - Project: P2 Inbound e-invoicing
-- Bible section changed: 
+- Bible section changed: §15 (S/4HANA stand-in, destination LW_S4) and §16 (destination naming)
 
 ## Context
 
