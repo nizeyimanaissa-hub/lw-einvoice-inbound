@@ -28,7 +28,7 @@ Last verified: 2026-11-22 (Phase 1 complete).
 ## Step 1: Create the BTP trial
 
 1. Open <https://www.sap.com/products/technology-platform/trial.html> and start the trial (onboarding: <https://developers.sap.com/tutorials/cp-trial-quick-onboarding.html>).
-2. Choose a region that offers Integration Suite. This trial uses **US East (us10, Cloud Foundry)**.
+2. Choose a region that offers Integration Suite. This trial uses **US East (us10, Cloud Foundry; API endpoint `api.cf.us10-003`, check yours in the cockpit)**.
 3. Subaccount name: `leinewerk-dev` (see deviations). Cloud Foundry space: `dev`.
 4. Calendar reminders: **day 25** (extend the trial before suspension at day 30) and day 85 (trial deleted at day 90; export everything to git first).
 
@@ -118,7 +118,7 @@ Expected: TC01 and TC02 ACCEPTABLE, TC05 REJECT (`BR-DE-15`), TC06 REJECT (`BR-C
 **Cloud Foundry login** (needed from Phase 2 on):
 
 ```bash
-cf login -a https://api.cf.us10-001.hana.ondemand.com --sso
+cf login -a https://api.cf.us10-003.hana.ondemand.com --sso
 cf target -o <org> -s dev
 ```
 
