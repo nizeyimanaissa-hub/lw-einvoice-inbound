@@ -16,4 +16,4 @@ The iFlow externalises `LW_S4_Address` and the credential alias `LW_S4`. The BTP
 ## Consequences
 
 - Two places hold the same target; keep them in sync (documented in `docs/setup.md`).
-- JMS availability on the trial tenant: yes
+- JMS availability on the trial tenant (checked 2026-11-22): **yes**. Phase 6 uses the JMS retry pattern (queue `LW_EI_INBOUND`, exponential back-off, dead-letter handling); the Data Store retry fallback is not needed.
