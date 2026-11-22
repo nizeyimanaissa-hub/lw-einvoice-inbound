@@ -4,13 +4,13 @@ Goal: rebuild the BTP trial and Integration Suite trial in about an hour (bible 
 Write every click here as you do Phase 1. Never put secrets in this file.
 
 - [ ] 1. Create the BTP trial (subaccount `leinewerk-dev`, CF space `dev`); calendar reminder at day 25
-- [ ] 2. Subscribe to Integration Suite, add Cloud Integration capability
-- [ ] 3. Assign `PI_Administrator`, `PI_Business_Expert`, `PI_Integration_Developer`
+- [ ] 2. Subscribe to Integration Suite, add Cloud Integration capability (Integration Suite)
+- [ ] 3. Assign `PI_Administrator`, `PI_Business_Expert`, `PI_Integration_Developer` (BTP Cockpit)
 - [ ] 4. Process Integration Runtime instance (`integration-flow`, `ESBMessaging.send`) and service key (local `.env` only)
 - [ ] 5. HANA Cloud trial instance `hana-free` (stops nightly; start it first in every test routine)
 - [ ] 6. Check JMS availability; record result in ADR 0005
 - [x] 7. Install local tools (see below)
-- [ ] 8. Smoke test with a Hello World HTTPS iFlow, then undeploy
+- [x] 8. Smoke test with a Hello World HTTPS iFlow, then undeploy (see below; undeploy pending)
 
 ## Step 7: local tools (done 2026-11-21, macOS arm64)
 
@@ -33,3 +33,10 @@ Verified: TC01 and TC02 ACCEPTABLE, TC05 rejected with BR-DE-15, TC06 rejected w
 cd ~/tools/kosit/config
 java -jar ../validator/validationtool-1.5.0-standalone.jar -s scenarios.xml -r "$PWD" -o <outdir> <absolute paths to invoices>
 ```
+
+## Step 8: smoke test (2026-11-22)
+
+- Token: client credentials against the service key's `tokenurl`; scopes `ESBMessaging.send` and `API.invoke`.
+- `POST <runtime url>/http/hello` returned 200 `Hello from Leinewerk!`.
+- Gotcha: a 403 (not 404) means the iFlow is deployed but the HTTPS sender refuses the token. Check that Authorization is *User Role* with `ESBMessaging.send`, and CSRF Protected is off, then redeploy.
+- `.env` holds the service-key JSON only; keep other secrets (e.g. HANA admin password) in the password manager.
