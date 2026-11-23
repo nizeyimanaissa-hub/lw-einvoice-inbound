@@ -2,3 +2,7 @@
 *.env
 node_modules/
 default-env.json
+
+# Phase 4 tooling (rebuild with scripts/fetch-tools.sh)
+.tools/
+build/

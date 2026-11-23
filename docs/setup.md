@@ -3,7 +3,7 @@
 Goal: rebuild the BTP trial, Integration Suite trial and local tools in about an hour (bible §15, rule 1).
 Nothing secret goes in this file. Secrets live in the git-ignored `.env` (service key only) and in the password manager.
 
-Last verified: 2026-11-22 (Phase 1 complete).
+Last verified: 2026-11-23 (Phase 1 complete; Step 9 = Phase 4, TC01, TC02, TC05 and TC06 verified).
 
 ## Overview
 
@@ -17,6 +17,7 @@ Last verified: 2026-11-22 (Phase 1 complete).
 | 6 | Check JMS | Cloud Integration | Result recorded in ADR 0005 |
 | 7 | Install local tools | Terminal | Node, CAP, CF, MTA, Java, KoSIT validator |
 | 8 | Smoke test | Terminal + Cloud Integration | Token call to an HTTPS iFlow returns 200 |
+| 9 | Build the Phase 4 iFlows (receive, detect, validate) | Terminal + Cloud Integration | TC01/TC02 return 200, TC05/TC06 return 422 |
 
 ## Deviations from the guide
 
@@ -153,6 +154,86 @@ Troubleshooting:
 | 500 on POST only | Request sent with the wrong `Content-Type` (clients such as Python `urllib` default to `application/x-www-form-urlencoded`) | Always send an explicit `Content-Type` (`text/plain`, `application/xml`, `application/pdf`) |
 | Token error | Service key from a different tenant | Recreate the key in the active subaccount and replace `.env` |
 
+## Step 9: Phase 4 iFlows (receive, detect the format, validate)
+
+Needs Steps 1 to 8. The package `LW_EInvoicing_Inbound` is exported as `iflow/LW_EInvoicing_Inbound.zip` (4 artifacts: the core iFlow, the HTTPS entry iFlow, the value mapping `LW_EI_ValueMappings` and the test iFlow `LW_Test_S4_Read`). Import it (*Design → Import*) to skip the clicking, then redo the test in 9.4. The core iFlow in the export already contains the 6 scripts (identical to `src/groovy/`), the 18 XSDs, the 4 XSLTs, the 3 JARs and `LW_MaxPayloadMB`=10; no credentials are inside. The rest of this step is the manual rebuild.
+
+### 9.1 Prepare the files locally
+
+```bash
+./scripts/fetch-tools.sh                      # Saxon, Groovy, PDFBox, KoSIT config into .tools/
+python3 scripts/build-cpi-resources.py        # flattened XSDs and XSLTs into build/cpi-resources/
+./test/unit/run.sh                            # 4 Schematron checks + 29 Groovy tests, all green
+```
+
+`build/cpi-resources/` holds `xsd-ubl/` (14 files), `xsd-cii/` (4 files) and `xslt/` (4 files). The scripts to paste are in `src/groovy/`.
+
+### 9.2 Core iFlow `LW_Supplier_to_S4_SupplierInvoice`
+
+1. *Design → your package → Add → Integration Flow*. Sender adapter **ProcessDirect**, address `/LW/EI/Core`.
+2. *Resources → Add → Archive*: upload `.tools/jars/pdfbox-2.0.30.jar`, `fontbox-2.0.30.jar` and `commons-logging-1.2.jar` (PDFBox 2.x needs commons-logging; the exported iFlow includes all three).
+3. *Resources → Add → Schema → XSD*: upload **all 14** files from `build/cpi-resources/xsd-ubl/` and all 4 from `xsd-cii/`. Imports resolve by relative name, so a missing file fails with `Cannot find resource: /xsd/<name>`.
+4. *Resources → Add → XSLT Mapping*: upload the 4 files from `build/cpi-resources/xslt/` (they are stored under `src/main/resources/mapping/` in the iFlow).
+5. Main flow, in this order. Every `${...}` value needs **Type = Expression** (a Constant sends the literal text).
+
+   | # | Step | Settings |
+   | --- | --- | --- |
+   | 1 | Content Modifier "Init" | Properties `ei.receivedAt` = `${date:now:yyyy-MM-dd'T'HH:mm:ss}`, `ei.channel` = `${header.EI_Channel}`, `ei.fileName` = `${header.EI_FileName}`, `ei.maxMB` = `{{LW_MaxPayloadMB}}`; header `SAP_MessageType` = `EInvoice` |
+   | 2 | Groovy | `CheckSize.groovy` |
+   | 3 | Data Store *Write* | `LW_EI_Originals`, Visibility **Global**, Entry ID `${header.SAP_MessageProcessingLogID}`, retention 30 days |
+   | 4 | Groovy | `ExtractZugferd.groovy` |
+   | 5 | Groovy | `DetectFormat.groovy` |
+   | 6 | Groovy | `ProfileAllowList.groovy` |
+   | 7 | Content Modifier "Stash XML" | Property `ei.xml` = `${in.body}` |
+   | 8 | Router | Route 1 **Non-XML** condition `${property.ei.syntax} = 'UBL'` calls `Validate_UBL`; default route calls `Validate_CII`; both end in a **Join** |
+   | 9 | Groovy | `EvaluateSvrl.groovy` |
+   | 10 | Content Modifier (interim reply) | Body (Expression) `{"result":"VALID","invoiceNumber":"${property.ei.invoiceNumber}","syntax":"${property.ei.syntax}","mode":"${property.ei.mode}"}`; header `Content-Type` = `application/json` |
+
+6. Local processes: *Process → Local Integration Process*, dropped **outside** the main pool and named `Validate_UBL` and `Validate_CII`. In the main flow, *Call → Local Call → Local Integration Process* is the Process Call; its dropdown lists the local processes by name.
+
+   `Validate_UBL`: XML Validator `/xsd/UBL-Invoice-2.1.xsd` → XSLT Mapping `EN16931-UBL-validation.xsl` → Content Modifier "Stash EN" (property `ei.svrlEn` = `${in.body}`, body = `${property.ei.xml}`, both Expression) → Router (Non-XML `${property.ei.mode} = 'XRECHNUNG'` to the next two steps, default route straight to the Join) → XSLT Mapping `XRechnung-UBL-validation.xsl` → Content Modifier "Stash XR" (property `ei.svrlXr` = `${in.body}`, body = `${property.ei.xml}`) → Join → End.
+
+   `Validate_CII`: the same with `/xsd/CrossIndustryInvoice_100pD16B.xsd`, `EN16931-CII-validation.xsl`, `XRechnung-CII-validation.xsl`.
+7. **Exception Subprocess**: Error Start → Groovy `ClassifyError.groovy` → **End Message**. This returns the 422, 202 or 500 JSON to the caller.
+8. *Configure*: externalise `LW_MaxPayloadMB` = `10`. Save and deploy.
+
+### 9.3 Entry iFlow `LW_SupplierHTTPS_to_CPI_EInvoice`
+
+1. Sender **HTTPS**, address `/lw/einvoice/inbound`, authorization *User Role* `ESBMessaging.send`, **CSRF Protection off**.
+2. Content Modifier: headers `EI_Channel` = `HTTPS`, `EI_FileName` = `upload`.
+3. *Request Reply* with a **ProcessDirect** receiver, address `/LW/EI/Core`.
+4. Save and deploy.
+
+### 9.4 Test
+
+POST the file as the raw body (Postman: Body → binary) with `Authorization: Bearer <token>` and an explicit `Content-Type` (`application/xml`, or `application/pdf` for ZUGFeRD) to `<url>/http/lw/einvoice/inbound`. The token comes from the same service key as in Step 8.
+
+| File | Result |
+| --- | --- |
+| `TC01_xrechnung_ubl_po.xml` | 200, `"syntax":"UBL"`, `"mode":"XRECHNUNG"` |
+| `TC02_xrechnung_cii_po.xml` | 200, `"syntax":"CII"` |
+| `TC05_missing_buyer_reference.xml` | 422 `EI_RULES`, `BR-DE-15` |
+| `TC06_wrong_payable_amount.xml` | 422 `EI_RULES`, `BR-CO-16` |
+| `<Order xmlns="urn:oasis:names:specification:ubl:schema:xsd:Order-2"/>` | 422 `EI_UNKNOWN_FORMAT` |
+
+Also check *Monitor Message Processing*: searching for the invoice number (`SAP_ApplicationID`) finds the message.
+
+Result 2026-11-23: TC01, TC02, TC05 and TC06 as expected. Not yet checked: `EI_SCHEMA`, PDF cases, credit note.
+
+### 9.5 Export
+
+After changes, download the package from *Design* and replace `iflow/LW_EInvoicing_Inbound.zip`. Set the log level back to **Info** (Trace stores payloads).
+
+### 9.6 Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `Cannot find resource: /xsd/UBL-CommonAggregateComponents-2.1.xsd` | Only the main XSD was uploaded | Upload all 14 files from `xsd-ubl/` (and the 4 from `xsd-cii/`) |
+| `Invalid xpath: ${exchangeProperty.ei.mode} = ...`, `expected "<name>", found "{"` | Router **Condition Type** is XML | Set Non-XML on every route condition |
+| `Unexpected character '$' (code 36) in prolog` in an XSLT step | Content Modifier body is a Constant, so the XSLT got the text `${property.ei.xml}` | Body Type = Expression |
+| TC05 or TC06 return 200 | SVRL empty: wrong or missing XSLT, property stored as Constant, or the Join not wired to `EvaluateSvrl` | Trace: *Message Content* after the XSLT step must contain `svrl:failed-assert`; check `ei.svrlEn` and `ei.svrlXr` |
+| 403 | CSRF protection on, or role missing | CSRF off in the HTTPS sender; key needs `ESBMessaging.send` |
+
 ## Rebuild checklist
 
 - [ ] Trial created, subaccount and space `dev`, reminders set
@@ -164,3 +245,4 @@ Troubleshooting:
 - [ ] Tools installed, Java on PATH, KoSIT results match the expected table
 - [ ] `cf target` shows the current org and space
 - [ ] Hello iFlow returns 200 and is undeployed
+- [ ] Phase 4: both iFlows deployed, TC01/TC02 return 200, TC05/TC06 return 422, log level back to Info, package exported to `iflow/`
