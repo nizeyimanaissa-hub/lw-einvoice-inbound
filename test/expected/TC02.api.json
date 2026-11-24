@@ -1,0 +1,29 @@
+{
+  "CompanyCode": "1100",
+  "DocumentDate": "/Date(1794873600000)/",
+  "PostingDate": "/Date(1795132800000)/",
+  "InvoicingParty": "20000003",
+  "SupplierInvoiceIDByInvcgParty": "DW-88213",
+  "DocumentCurrency": "EUR",
+  "InvoiceGrossAmount": "714.00",
+  "DueCalculationBaseDate": "/Date(1794873600000)/",
+  "CashDiscount1Percent": "2.00",
+  "CashDiscount1Days": "14",
+  "NetPaymentDays": "30",
+  "TaxIsCalculatedAutomatically": false,
+  "to_SuplrInvcItemPurOrdRef": { "results": [ {
+    "SupplierInvoiceItem": "1",
+    "PurchaseOrder": "4500000102",
+    "PurchaseOrderItem": "10",
+    "DocumentCurrency": "EUR",
+    "SupplierInvoiceItemAmount": "600.00",
+    "QuantityInPurchaseOrderUnit": "5000",
+    "PurchaseOrderQuantityUnit": "PC",
+    "TaxCode": "V1"
+  } ] },
+  "to_SupplierInvoiceTax": { "results": [ {
+    "TaxCode": "V1",
+    "DocumentCurrency": "EUR",
+    "TaxAmount": "114.00"
+  } ] }
+}

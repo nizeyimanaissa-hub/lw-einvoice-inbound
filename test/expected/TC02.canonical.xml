@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice version="1" source="CII">
+   <Header>
+      <Number>DW-88213</Number>
+      <TypeCode>380</TypeCode>
+      <IssueDate>2026-11-17</IssueDate>
+      <DueDate>2026-12-17</DueDate>
+      <Currency>EUR</Currency>
+      <BuyerReference>LW-1100</BuyerReference>
+      <PurchaseOrder>4500000102</PurchaseOrder>
+      <SellerVatId>DE200000003</SellerVatId>
+      <GrossAmount>714.00</GrossAmount>
+      <PaymentTerms>#SKONTO#TAGE=14#PROZENT=2.00#
+</PaymentTerms>
+   </Header>
+   <Taxes>
+      <Tax>
+         <Category>S</Category>
+         <Rate>19</Rate>
+         <BaseAmount>600.00</BaseAmount>
+         <Amount>114.00</Amount>
+      </Tax>
+   </Taxes>
+   <Lines>
+      <Line>
+         <Id>1</Id>
+         <PurchaseOrderItem>10</PurchaseOrderItem>
+         <Quantity unit="H87">5000</Quantity>
+         <NetAmount>600.00</NetAmount>
+         <TaxCategory>S</TaxCategory>
+         <TaxRate>19</TaxRate>
+      </Line>
+   </Lines>
+</Invoice>

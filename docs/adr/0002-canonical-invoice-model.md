@@ -18,3 +18,5 @@ Map UBL and CII first to one internal Leinewerk invoice XML (canonical), then ma
 - XRechnung 4.0 becomes a third input mapping (`*-to-canonical.xsl`); the API mapping is untouched.
 - Each XSLT is unit-tested in CI with Saxon-HE.
 - One extra transformation step per message.
+- The canonical invoice carries source facts only (`Header`, `Taxes`, `Lines`). S/4HANA keys are added in a separate `<S4>` block by `Enrich.groovy`, so the two input mappings need no value mapping and the output mapping refuses an invoice that was not enriched.
+- Skonto text (`#SKONTO#TAGE=14#PROZENT=2.00#`) stays raw in the canonical invoice and is parsed once, in `canonical-to-api.xsl`, instead of once per syntax.

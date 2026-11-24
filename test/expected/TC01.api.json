@@ -1,0 +1,27 @@
+{
+  "CompanyCode": "1100",
+  "DocumentDate": "/Date(1794787200000)/",
+  "PostingDate": "/Date(1795132800000)/",
+  "InvoicingParty": "20000007",
+  "SupplierInvoiceIDByInvcgParty": "MH-2026-10457",
+  "DocumentCurrency": "EUR",
+  "InvoiceGrossAmount": "2856.00",
+  "DueCalculationBaseDate": "/Date(1794787200000)/",
+  "NetPaymentDays": "30",
+  "TaxIsCalculatedAutomatically": false,
+  "to_SuplrInvcItemPurOrdRef": { "results": [ {
+    "SupplierInvoiceItem": "1",
+    "PurchaseOrder": "4500000101",
+    "PurchaseOrderItem": "10",
+    "DocumentCurrency": "EUR",
+    "SupplierInvoiceItemAmount": "2400.00",
+    "QuantityInPurchaseOrderUnit": "800",
+    "PurchaseOrderQuantityUnit": "KG",
+    "TaxCode": "V1"
+  } ] },
+  "to_SupplierInvoiceTax": { "results": [ {
+    "TaxCode": "V1",
+    "DocumentCurrency": "EUR",
+    "TaxAmount": "456.00"
+  } ] }
+}

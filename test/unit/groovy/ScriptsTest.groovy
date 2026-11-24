@@ -128,6 +128,25 @@ test('EvaluateSvrl: warnings do not reject') {
     assert logs['ei.warnings'].contains('just a warning')
 }
 
+test('EvaluateSvrl: a property that is not XML (e.g. a Constant "${in.body}") is named in the error, not a bare parser message') {
+    def m = msg('<svrl/>'); m.setProperty('ei.xml', '<ok/>'); m.setProperty('ei.svrlEn', svrl('TC01_xrechnung_ubl_po.en')); m.setProperty('ei.svrlXr', '${in.body}')
+    try { script('EvaluateSvrl').processData(m); assert false, 'should fail' }
+    catch (IllegalStateException e) { assert e.message.contains('ei.svrlXr') && e.message.contains('${in.body}') }
+}
+test('EvaluateSvrl: properties holding the raw bytes of the body (as Cloud Integration stores ${in.body}) work') {
+    def m = msg('<svrl/>')
+    m.setProperty('ei.xml', file('TC02_xrechnung_cii_po'))
+    m.setProperty('ei.svrlEn', svrl('TC02_xrechnung_cii_po.en').getBytes('UTF-8')); m.setProperty('ei.svrlXr', svrl('TC02_xrechnung_cii_po.xr').getBytes('UTF-8'))
+    def out = script('EvaluateSvrl').processData(m)
+    assert out.getBody(String).startsWith('<?xml') && out.getBody(String).contains('DW-88213')
+    def bad = msg('<svrl/>'); bad.setProperty('ei.svrlEn', svrl('TC06_wrong_payable_amount.en').getBytes('UTF-8'))
+    assert codeOf { script('EvaluateSvrl').processData(bad) } == 'EI_RULES'
+}
+test('EvaluateSvrl: a BOM or blank before the SVRL is tolerated') {
+    def m = eval('TC01_xrechnung_ubl_po'); m.setProperty('ei.svrlEn', '\uFEFF \n' + svrl('TC01_xrechnung_ubl_po.en'))
+    script('EvaluateSvrl').processData(m)
+}
+
 // ---- ExtractZugferd
 def pdfWith = { Closure fill ->
     def doc = new PDDocument(); doc.addPage(new PDPage()); fill(doc)
@@ -185,6 +204,20 @@ test('ClassifyError: rejects with 422 and the rule list') {
 test('ClassifyError: credit note is queued for Aylin with 202') {
     def m = classify(new Exception('EI_CREDIT_NOTE_MANUAL: x'))
     assert m.getProperty('ei.result') == 'EXCEPTION_QUEUED' && m.getHeader('CamelHttpResponseCode', Integer) == 202
+}
+test('ClassifyError: finds the code in a message wrapped by Cloud Integration, and cleans the reason') {
+    def m = classify(new Exception('java.lang.Exception: java.lang.Exception: EI_NO_PO_MANUAL: the invoice has no purchase order reference (BT-13)@ line 16 in PrepareEnrich.groovy'))
+    assert m.getProperty('ei.code') == 'EI_NO_PO_MANUAL' && m.getProperty('ei.result') == 'EXCEPTION_QUEUED' && m.getHeader('CamelHttpResponseCode', Integer) == 202
+    assert m.getProperty('ei.reason') == 'the invoice has no purchase order reference (BT-13)'
+    def r = classify(new Exception('java.lang.Exception: EI_RULES: 1 fatal rule violation(s): BR-DE-15@ line 40 in EvaluateSvrl.groovy'), '["BR-DE-15 x"]')
+    assert r.getProperty('ei.result') == 'REJECTED' && r.getHeader('CamelHttpResponseCode', Integer) == 422
+}
+test('ClassifyError: the code is also found in the cause chain') {
+    def m = classify(new RuntimeException('script failed', new Exception('EI_VM_MISSING: UnitCode=MTR')))
+    assert m.getProperty('ei.code') == 'EI_VM_MISSING' && m.getProperty('ei.reason') == 'UnitCode=MTR'
+}
+test('ClassifyError: a message that merely mentions a code in the middle of prose is technical') {
+    assert classify(new Exception('see EI_RULES in the docs')).getProperty('ei.result') == 'TECHNICAL'
 }
 test('ClassifyError: XML Validator failures become EI_SCHEMA') {
     def m = classify(new Exception('XML validation failed: cvc-complex-type.2.4.a'))

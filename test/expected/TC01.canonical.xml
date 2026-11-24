@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice version="1" source="UBL">
+   <Header>
+      <Number>MH-2026-10457</Number>
+      <TypeCode>380</TypeCode>
+      <IssueDate>2026-11-16</IssueDate>
+      <DueDate>2026-12-16</DueDate>
+      <Currency>EUR</Currency>
+      <BuyerReference>LW-1100</BuyerReference>
+      <PurchaseOrder>4500000101</PurchaseOrder>
+      <SellerVatId>DE200000007</SellerVatId>
+      <GrossAmount>2856.00</GrossAmount>
+      <PaymentTerms>Zahlbar innerhalb von 30 Tagen netto</PaymentTerms>
+   </Header>
+   <Taxes>
+      <Tax>
+         <Category>S</Category>
+         <Rate>19</Rate>
+         <BaseAmount>2400.00</BaseAmount>
+         <Amount>456.00</Amount>
+      </Tax>
+   </Taxes>
+   <Lines>
+      <Line>
+         <Id>1</Id>
+         <PurchaseOrderItem>10</PurchaseOrderItem>
+         <Quantity unit="KGM">800</Quantity>
+         <NetAmount>2400.00</NetAmount>
+         <TaxCategory>S</TaxCategory>
+         <TaxRate>19</TaxRate>
+      </Line>
+   </Lines>
+</Invoice>

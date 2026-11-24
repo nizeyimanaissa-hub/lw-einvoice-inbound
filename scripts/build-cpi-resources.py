@@ -5,6 +5,7 @@ Cloud Integration keeps XSDs as flat files and resolves imports by file name, wh
 each other by relative path. This script follows the imports of the two main XSDs, copies every file flat
 and rewrites each schemaLocation to the bare file name. It also copies the four Schematron XSLTs the
 official validator uses (scenarios.xml of the KoSIT configuration), not the top-level *.xslt files.
+Phase 5 adds our three mapping XSLTs from src/xslt/ to the same xslt/ folder (Cloud Integration keeps all XSLT mappings in one place).
 """
 import re, shutil, sys
 from pathlib import Path
@@ -40,5 +41,5 @@ for kind, main in MAIN_XSDS.items():
         (d / f.name).write_text(LOC.sub(lambda m: m.group(1) + Path(m.group(2)).name + m.group(3), text), encoding="utf-8")
     print(f"xsd-{kind}: main {main.name}, {len(files)} files")
 x = OUT / "xslt"; x.mkdir()
-for f in XSLTS:
+for f in XSLTS + sorted((ROOT / "src/xslt").glob("*.xsl")):
     shutil.copy(f, x / f.name); print(f"xslt: {f.name} ({f.stat().st_size // 1024} KB)")

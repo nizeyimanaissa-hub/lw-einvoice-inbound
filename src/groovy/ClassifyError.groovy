@@ -8,16 +8,24 @@ def Message processData(Message message) {
     final Set<String> REJECTED = ['EI_UNKNOWN_FORMAT', 'EI_PDF_WITHOUT_XML', 'EI_PROFILE_NOT_INVOICE', 'EI_PROFILE_UNKNOWN',
                                   'EI_SCHEMA', 'EI_RULES', 'EI_TOO_LARGE'] as Set
     final Set<String> QUEUED = ['EI_SUPPLIER_UNKNOWN', 'EI_VM_MISSING', 'EI_NO_PO_MANUAL', 'EI_CREDIT_NOTE_MANUAL',
+                                'EI_SUPPLIER_AMBIGUOUS', 'EI_FIELD_TOO_LONG',
                                 'ST_PO_MISMATCH', 'ST_DUPLICATE', 'ST_BALANCE', 'ST_TAXCODE'] as Set
     def ex = message.getProperty('CamelExceptionCaught')
     String text = ex != null ? String.valueOf(ex.getMessage()) : ''
-    String code = (text =~ /^(EI_[A-Z0-9_]+|ST_[A-Z0-9_]+)/).find() ? (text =~ /^(EI_[A-Z0-9_]+|ST_[A-Z0-9_]+)/)[0][1] : null
+    // Cloud Integration wraps script exceptions: "java.lang.Exception: java.lang.Exception: EI_X: reason@ line 16 in Foo.groovy".
+    // Look for the code anywhere in the message or its causes, as "EI_..:" / "ST_..:" at a word start, and cut the wrapper off the reason.
+    String code = null
+    String reason = null
+    for (Throwable t = ex as Throwable; t != null && code == null; t = (t.getCause() != t ? t.getCause() : null)) {
+        def m = (String.valueOf(t.getMessage()) =~ /(?:^|[\s:])((?:EI|ST)_[A-Z0-9_]+):\s*(.*)$/)
+        if (m.find()) { code = m.group(1); reason = m.group(2).replaceFirst(/\s*@ line \d+ in \S+\s*$/, '').trim() }
+    }
     // the XML Validator step throws its own exception type: no EI_ code in its message
     if (code == null && ex != null && (ex.getClass().getName().toLowerCase().contains('validat') || text.toLowerCase().contains('xml validation'))) {
         code = 'EI_SCHEMA'
     }
     String result = REJECTED.contains(code) ? 'REJECTED' : (QUEUED.contains(code) ? 'EXCEPTION_QUEUED' : 'TECHNICAL')
-    String reason = code != null && text.startsWith(code) ? text.substring(code.length()).replaceFirst(/^:\s*/, '') : text
+    if (reason == null) reason = text
     message.setProperty('ei.result', result)
     message.setProperty('ei.code', code ?: 'EI_TECHNICAL')
     message.setProperty('ei.reason', reason)
